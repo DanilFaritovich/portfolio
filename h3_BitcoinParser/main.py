@@ -10,7 +10,7 @@ from lxml import html
 from itertools import chain
 from oauth2client.service_account import ServiceAccountCredentials
 import gspread
-
+import os
 
 
 work_sheet_name = 'Парсер'
@@ -36,34 +36,33 @@ chrome_options = webdriver.ChromeOptions()
 #chrome_options.add_argument(f'user-agent={userAgent}')
 chrome_options.headless = True
 #s=Service(ChromeDriverManager().install())
-driver = webdriver.Chrome(executable_path='chromedriver.exe', chrome_options=chrome_options)
-driver.create_options()
 
 link = ['https://spreadsheets.google.com/feeds',
             'https://www.googleapis.com/auth/drive']  # задаем ссылку на Гугл таблици
 my_creds = ServiceAccountCredentials.from_json_keyfile_name('test.json',
-                                                                link)  # формируем данные для входа из нашего json файла
+                                                            link)  # формируем данные для входа из нашего json файла
 client = gspread.authorize(my_creds)  # запускаем клиент для связи с таблицами
 sheet = client.open(work_sheet_name)  # открываем нужную на таблицу и лист
 google_list = sheet.worksheet(orders_list_name)
 
-def connect(url):
-    driver.get(url)
-    time.sleep(1)
+def connect():
     try:
-        return [driver.find_elements(By.XPATH,'//select[@class="form-control ng-untouched ng-pristine ng-valid"]')[0], driver.find_elements(By.XPATH,'//select[@class="form-control ng-untouched ng-pristine ng-valid"]')[1]]
+        driver = webdriver.Chrome(executable_path='chromedriver', chrome_options=chrome_options)
+        driver.create_options()
+        driver.get('https://cryptoxscanner.com/binance/live')
+        select_element_0, select_element_1 = driver.find_elements(By.XPATH,'//select[@class="form-control ng-untouched ng-pristine ng-valid"]')[0], driver.find_elements(By.XPATH,'//select[@class="form-control ng-untouched ng-pristine ng-valid"]')[1]
+        select_object = Select(select_element_1)
+        select_object.select_by_index(3)
+        select_object = Select(select_element_0)
+        select_object.select_by_index(2)
+        time.sleep(10)
+        #return [driver.find_elements(By.XPATH,'//select[@class="form-control ng-untouched ng-pristine ng-valid"]')[0], driver.find_elements(By.XPATH,'//select[@class="form-control ng-untouched ng-pristine ng-valid"]')[1]]
+        return driver
     except:
-        driver.quit()
-        time.sleep(3)
-        connect(url)
+        time.sleep(6)
+        connect()
 
-select_element_0, select_element_1 = connect('https://cryptoxscanner.com/binance/live')
-select_object = Select(select_element_1)
-select_object.select_by_index(3)
-select_object = Select(select_element_0)
-select_object.select_by_index(2)
-time.sleep(10)
-
+driver = connect()
 tree = html.fromstring(driver.page_source)
 data = [[[i.get('title')],[b.text.replace(',', '').replace('.', ',') for b in i.xpath('td[@class="ng-tns-c0-0 ng-star-inserted"]/span/span')[:9]]] for i in tree.xpath('//tr[@class="ng-tns-c0-0 ng-star-inserted"]')]
 google_list.clear()
@@ -103,5 +102,6 @@ while True:
         print(time.perf_counter() - time_start)
     except:
         driver.quit()
-        time.sleep(5)
-        connect('https://cryptoxscanner.com/binance/live')
+        time.sleep(6)
+        driver.quit()
+        driver = connect()
